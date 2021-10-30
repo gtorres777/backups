@@ -17,7 +17,7 @@ from datetime import timedelta
 class Args(NamedTuple):
     """ Command-line arguments """
     url: str
-    pod_name: str
+    deploy: str
 
 
 def get_args() -> Args:
@@ -33,14 +33,14 @@ def get_args() -> Args:
                         metavar='url',
                         help='url of the service')
 
-    parser.add_argument('pod_name',
-                        metavar='pod_name',
-                        help='name of the pod')
+    parser.add_argument('deploy',
+                        metavar='deploy',
+                        help='name of the deploy')
                         
     args = parser.parse_args()
 
 
-    return Args(args.url, args.pod_name)
+    return Args(args.url, args.deploy)
 
 
 def get_list_db(url):
@@ -80,7 +80,7 @@ def dump_db_odoo(db_name):
 
 
 def upload_dump_to_s3(list_db, data):
-    pod_name = data['pod_name']
+    deploy = data['deploy']
     directory = data['directory']
     for db in list_db:
         print('DATABASE:', db)
@@ -90,7 +90,7 @@ def upload_dump_to_s3(list_db, data):
         else:
             dump_name = dump_db_odoo(db)
             if dump_name:
-                bucket_name = 's3://backups-odoo-prod/{}/{}/{}'.format(pod_name, db, dump_name)
+                bucket_name = 's3://backups-odoo-prod/{}/{}/{}'.format(deploy, db, dump_name)
                 dir_dump = '{}{}'.format(directory, dump_name)
                 operation = 'aws s3 cp {} {} --acl public-read'.format(dir_dump, bucket_name)
                 print('Uploading...')
@@ -101,7 +101,7 @@ def upload_dump_to_s3(list_db, data):
 
 
 
-def generate_backups(url, pod_name):
+def generate_backups(url, deploy):
 
     current_user = getpass.getuser()
     file_route = "/home/{0}/backup/".format(current_user)
@@ -110,7 +110,7 @@ def generate_backups(url, pod_name):
         os.system("mkdir /home/{0}/backup/".format(current_user))
 
     data = {
-        'pod_name': pod_name,
+        'deploy': deploy,
         'directory': '/home/{0}/backup/'.format(current_user)
     }
 
@@ -119,7 +119,7 @@ def generate_backups(url, pod_name):
         print('¡CONNECTION PROBLEM!\n Review data and try again.')
     else:
         list_db = db['result']
-        print('POD:', data['pod_name'])
+        print('DEPLOY:', data['deploy'])
         upload_dump_to_s3(list_db, data)
 
 
@@ -127,9 +127,9 @@ def generate_backups(url, pod_name):
 def main():
 
     args = get_args()
-    url, pod_name = args.url, args.pod_name
+    url, deploy = args.url, args.deploy
 
-    generate_backups(url,pod_name)
+    generate_backups(url,deploy)
 
 
 if __name__ == '__main__':
