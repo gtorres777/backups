@@ -65,14 +65,14 @@ def dump_db_odoo(db_name):
 
     try:
         operation = subprocess.check_output('sh odoo-backup.sh {}'.format(db_name),shell=True).decode('utf-8')
-        print('Backup files generated')
+        print('Backup files generated!')
 
         output_from_script = operation.splitlines()
         dump_name = output_from_script[-1]
 
     except Exception as e:
         dump_name = False
-        print('Connection establishment failed!')
+        print("Error generating backup files: ")
         print(e)
 
     return dump_name
@@ -92,12 +92,12 @@ def upload_dump_to_s3(list_db, data):
             if dump_name:
                 bucket_name = 's3://backups-odoo-prod/{}/{}/{}'.format(deploy, db, dump_name)
                 dir_dump = '{}{}'.format(directory, dump_name)
-                operation = 'aws s3 cp {} {} --acl public-read'.format(dir_dump, bucket_name)
+                operation = 'aws s3 cp {} {} --acl public-read --no-progress --only-show-errors'.format(dir_dump, bucket_name)
                 print('Uploading...')
                 os.system(operation)
                 print('Bucket:', bucket_name)
                 os.system('rm {}*'.format(directory))
-        print('------------------')
+        print('-------------------------------------')
 
 
 
@@ -129,7 +129,15 @@ def main():
     args = get_args()
     url, deploy = args.url, args.deploy
 
-    generate_backups(url,deploy)
+
+    try:
+
+        generate_backups(url,deploy)
+
+    except Exception as e:
+        print("Error: ")
+        print(e)
+        print('-------------------------------------')
 
 
 if __name__ == '__main__':
