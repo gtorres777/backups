@@ -18,6 +18,7 @@ class Args(NamedTuple):
     """ Command-line arguments """
     url: str
     deploy: str
+    db_name: str
 
 
 def get_args() -> Args:
@@ -36,6 +37,10 @@ def get_args() -> Args:
     parser.add_argument('deploy',
                         metavar='deploy',
                         help='name of the deploy')
+    
+    parser.add_argument('db_name',
+                        metavar='db_name',
+                        help='name of the db to generate backup')
                         
     args = parser.parse_args()
 
@@ -80,26 +85,32 @@ def dump_db_odoo(db_name):
 
 
 def upload_dump_to_s3(list_db, data):
-    deploy = data['deploy']
+    db_name = data['db_name']
     directory = data['directory']
     for db in list_db:
-        print('DATABASE:', db)
-        dump_name = dump_db_odoo(db)
-        if dump_name:
-            bucket_name = 's3://tools-ganemo/{}'.format(dump_name)
-            dir_dump = '{}{}'.format(directory, dump_name)
-            operation = 'aws s3 cp {} {} --acl public-read --no-progress --only-show-errors'.format(dir_dump, bucket_name)
-            print('Uploading...')
-            os.system(operation)
-            print('Bucket:', bucket_name)
-            os.system('rm {}*'.format(directory))
-            print("Link to download db: ", db)
-            print("https://tools-ganemo.s3.amazonaws.com/{}".format(dump_name))
-        print('-------------------------------------')
+        if db == db_name:
+            print('DATABASE:', db)
+            dump_name = dump_db_odoo(db)
+            if dump_name:
+                bucket_name = 's3://tools-ganemo/{}'.format(dump_name)
+                dir_dump = '{}{}'.format(directory, dump_name)
+                operation = 'aws s3 cp {} {} --acl public-read --no-progress --only-show-errors'.format(dir_dump, bucket_name)
+                print('Uploading...')
+                os.system(operation)
+                print('Bucket:', bucket_name)
+                os.system('rm {}*'.format(directory))
+                print("Link to download db: ", db)
+                print("https://tools-ganemo.s3.amazonaws.com/{}".format(dump_name))
+            print('-------------------------------------')
+        else:
+            print('Will not generate backup of DATABASE:', db)
+       
+            
+        
 
 
 
-def generate_backups(url, deploy):
+def generate_backups(url, deploy, db_name):
 
     current_user = getpass.getuser()
     file_route = "/home/{0}/backup/".format(current_user)
@@ -109,7 +120,8 @@ def generate_backups(url, deploy):
 
     data = {
         'deploy': deploy,
-        'directory': '/home/{0}/backup/'.format(current_user)
+        'directory': '/home/{0}/backup/'.format(current_user),
+        'db_name': db_name
     }
 
     db = get_list_db(url)
@@ -125,12 +137,12 @@ def generate_backups(url, deploy):
 def main():
 
     args = get_args()
-    url, deploy = args.url, args.deploy
+    url, deploy, db_name = args.url, args.deploy, args.db_name
 
 
     try:
 
-        generate_backups(url,deploy)
+        generate_backups(url,deploy,db_name)
 
     except Exception as e:
         print("Error: ")
