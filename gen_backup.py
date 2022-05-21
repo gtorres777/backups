@@ -45,7 +45,7 @@ def get_args() -> Args:
     args = parser.parse_args()
 
 
-    return Args(args.url, args.deploy)
+    return Args(args.url, args.deploy, args.db_name)
 
 
 def get_list_db(url):
